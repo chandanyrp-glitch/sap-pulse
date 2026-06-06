@@ -140,7 +140,7 @@ async function fetchAndCache() {
   for (const feed of FEEDS) {
     try {
       const parsed = await parser.parseURL(feed.url);
-      for (const item of (parsed.items || []).slice(0, 6)) {
+      for (const item of (parsed.items || []).slice(0, 12)) {
         const image =
           item.enclosure?.url ||
           item.mediaContent?.['$']?.url ||
@@ -177,7 +177,7 @@ async function fetchAndCache() {
   raw.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
   const items = [];
-  for (const item of raw.slice(0, 30)) {
+  for (const item of raw.slice(0, 40)) {
     const summary = await summarise(item.title, item.content);
     items.push({ ...item, summary });
     await new Promise(r => setTimeout(r, 250));

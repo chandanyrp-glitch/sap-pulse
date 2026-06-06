@@ -684,6 +684,14 @@ function timeAgo(dateStr) {
 
 function formatDate(d) {
   if (!d) return '';
+  const diff  = Date.now() - new Date(d).getTime();
+  const mins  = Math.floor(diff / 60000);
+  const hours = Math.floor(mins / 60);
+  const days  = Math.floor(hours / 24);
+  if (mins < 60)  return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days === 1) return 'Yesterday';
+  if (days < 7)   return `${days}d ago`;
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
@@ -974,8 +982,10 @@ async function triggerRefresh() {
     const res  = await fetch('/api/refresh', { method: 'POST' });
     const data = await res.json();
     if (data.success) {
-      toast(`✓ ${data.count} fresh articles loaded`);
       await loadNews();
+      const newest = allItems[0];
+      const age = newest ? formatDate(newest.pubDate) : '';
+      toast(`✓ ${data.count} articles · Latest: ${age}`);
     }
   } catch {
     toast('Refresh failed');
