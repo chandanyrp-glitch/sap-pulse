@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a1628">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SAP Pulse">
+<link rel="manifest" href="/manifest.json">
+<title>SAP Pulse</title>
+<style>
+  :root {
+    --blue:    #0070B1;
+    --blue-dk: #004E7C;
+    --purple:  #6C5CE7;
+    --green:   #00B894;
+    --orange:  #E17055;
+    --bg:      #0a1628;
+    --card:    #FFFFFF;
+    --text:    #1A2332;
+    --muted:   #64748B;
+    --safe-top:    env(safe-area-inset-top,    0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    touch-action: none;
+    user-select: none;
+  }
+
+  /* ── App shell ──────────────────────────────── */
+  #app {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  #header {
+    position: relative;
+    z-index: 20;
+    padding: calc(var(--safe-top) + 10px) 20px 10px;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-mark {
+    width: 34px; height: 34px;
+    background: var(--blue);
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800; color: white; letter-spacing: -0.5px;
+  }
+
+  .brand-text h1 { font-size: 18px; font-weight: 700; color: white; letter-spacing: -0.3px; }
+  .brand-text p  { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 1px; }
+
+  #refresh-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: white;
+    border-radius: 8px;
+    padding: 7px 13px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 5px;
+    transition: background 0.2s;
+  }
+  #refresh-btn:active { background: rgba(255,255,255,0.05); }
+
+  /* ── Category pills ── */
+  #pill-bar {
+    padding: 0 16px 10px;
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+  }
+  #pill-bar::-webkit-scrollbar { display: none; }
+
+  .pill {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.55);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .pill.active {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: white;
+  }
+
+  /* ── Progress bar ── */
+  #progress-bar {
+    flex-shrink: 0;
+    padding: 0 20px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #progress-track {
+    flex: 1;
+    height: 3px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  #progress-fill {
+    height: 100%;
+    background: var(--blue);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  #progress-count {
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    white-space: nowrap;
+    min-width: 45px;
+    text-align: right;
+  }
+
+  /* ── Card viewport ── */
+  #card-viewport {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    padding: 0 16px;
+    min-height: 0;
+  }
+
+  /* ── Card stage: the centered, size-constrained container ── */
+  #card-stage {
+    position: relative;
+    flex: 1;
+    max-width: 440px;
+    overflow: hidden;
+  }
+
+  /* ── Card ── */
+  .card {
+    position: absolute;
+    inset: 0;
+    background: white;
+    border-radius: 22px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    will-change: transform, opacity;
+    transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1),
+                opacity   0.35s ease;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  }
+
+  .card.entering-from-bottom { transform: translateY(110%); opacity: 0; }
+  .card.entering-from-top    { transform: translateY(-110%); opacity: 0; }
+  .card.exiting-to-top       { transform: translateY(-110%); opacity: 0; pointer-events: none; }
+  .card.exiting-to-bottom    { transform: translateY(110%); opacity: 0; pointer-events: none; }
+  .card.active               { transform: translateY(0); opacity: 1; }
+  .card.dragging             { transition: none; }
+
+  /* Card accent line */
+  .card-accent {
+    height: 5px;
+    flex-shrink: 0;
+  }
+
+  /* Card header */
+  .card-head {
+    padding: 16px 20px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    border-bottom: 1px solid #F1F5F9;
+  }
+
+  .badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+  .badge-Official  { background: #E3F0FA; color: #0070B1; }
+  .badge-Technical { background: #EDE9FC; color: #6C5CE7; }
+  .badge-Industry  { background: #E0FAF4; color: #00967A; }
+  .badge-Analysis  { background: #FEF0ED; color: #C0392B; }
+
+  .card-date {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* Card body */
+  .card-body {
+    flex: 1;
+    padding: 18px 20px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow: hidden;
+  }
+
+  .card-title {
+    font-size: 19px;
+    font-weight: 800;
+    line-height: 1.35;
+    color: #0F1B2D;
+    letter-spacing: -0.3px;
+  }
+
+  .card-summary {
+    font-size: 15px;
+    line-height: 1.7;
+    color: #3D5068;
+    flex: 1;
+  }
+
+  /* Word count badge */
+  .word-count {
+    align-self: flex-start;
+    background: #F1F5F9;
+    color: #94A3B8;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+
+  /* Card footer */
+  .card-foot {
+    padding: 12px 20px calc(12px + var(--safe-bottom));
+    border-top: 1px solid #F1F5F9;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .card-source {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .src-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--blue);
+    opacity: 0.5;
+  }
+
+  .read-btn {
+    background: #0F1B2D;
+    color: white;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: opacity 0.15s;
+  }
+  .read-btn:active { opacity: 0.7; }
+
+  /* ── Swipe hint ── */
+  #swipe-hint {
+    position: absolute;
+    bottom: 28px;
+    left: 0; right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s;
+    z-index: 5;
+  }
+  #swipe-hint.show { opacity: 1; }
+  .hint-arrow {
+    font-size: 20px;
+    animation: bounce 1.4s ease infinite;
+    color: rgba(255,255,255,0.6);
+  }
+  .hint-text { font-size: 11px; color: rgba(255,255,255,0.4); }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(6px); }
+  }
+
+  /* ── Loading screen ── */
+  #loading {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    z-index: 100;
+    transition: opacity 0.4s;
+  }
+  #loading.hidden { opacity: 0; pointer-events: none; }
+
+  .loader-logo {
+    width: 64px; height: 64px;
+    background: var(--blue);
+    border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; font-weight: 900; color: white;
+    animation: pulse 1.6s ease infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1);    opacity: 1;   }
+    50%       { transform: scale(0.92); opacity: 0.8; }
+  }
+  .loader-text { font-size: 14px; color: rgba(255,255,255,0.4); }
+
+  /* ── Empty state ── */
+  #empty {
+    display: none;
+    position: absolute;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 14px;
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+    padding: 40px;
+    z-index: 1;
+  }
+  #empty.show { display: flex; }
+  #card-stage { position: relative; }
+  #empty .e-icon { font-size: 48px; opacity: 0.3; }
+  #empty h3 { font-size: 18px; color: white; }
+  #empty p  { font-size: 13px; line-height: 1.6; }
+
+  /* ── Card image ── */
+  .card-img-wrap {
+    position: relative;
+    width: 100%;
+    height: 170px;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: linear-gradient(135deg, #E8F0F8 0%, #F1F5F9 100%);
+  }
+
+  .card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s ease;
+  }
+
+  .card:hover .card-image { transform: scale(1.03); }
+
+  /* gradient fade at bottom of image */
+  .card-img-wrap::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 60px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.9));
+    pointer-events: none;
+  }
+
+  /* placeholder shown when no image */
+  .card-img-placeholder {
+    width: 100%;
+    height: 170px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    opacity: 0.25;
+  }
+
+  /* ── LinkedIn card ── */
+  .linkedin-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px 0;
+    flex-shrink: 0;
+  }
+
+  .linkedin-avatar {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: #0077b5;
+  }
+
+  .linkedin-meta { flex: 1; min-width: 0; }
+  .linkedin-name  { font-size: 13px; font-weight: 700; color: #0F1B2D; }
+  .linkedin-title { font-size: 11px; color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .li-badge {
+    background: #E8F3FC;
+    color: #0077b5;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 20px;
+    flex-shrink: 0;
+  }
+
+  /* ── Saved card ── */
+  .saved-badge {
+    background: #FFF8E1;
+    color: #F59E0B;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 20px;
+  }
+
+  /* ── FAB (floating save button) ── */
+  #fab {
+    position: fixed;
+    bottom: calc(28px + var(--safe-bottom));
+    right: 24px;
+    width: 52px; height: 52px;
+    background: #0077b5;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 26px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(0,119,181,0.5);
+    z-index: 200;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  #fab:active { transform: scale(0.92); }
+
+  /* ── Save modal ── */
+  #save-modal-backdrop {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 300;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  #save-modal-backdrop.open { display: flex; }
+
+  #save-modal {
+    background: white;
+    border-radius: 24px 24px 0 0;
+    padding: 20px 20px calc(20px + var(--safe-bottom));
+    width: 100%;
+    max-width: 480px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.25,0.8,0.25,1);
+  }
+  #save-modal-backdrop.open #save-modal { transform: translateY(0); }
+
+  .modal-handle {
+    width: 36px; height: 4px;
+    background: #E2E8F0;
+    border-radius: 2px;
+    margin: 0 auto 18px;
+  }
+
+  .modal-title {
+    font-size: 17px; font-weight: 700;
+    color: #0F1B2D;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .modal-input {
+    width: 100%;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 14px;
+    color: #0F1B2D;
+    margin-bottom: 10px;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  .modal-input:focus { border-color: #0077b5; }
+
+  .modal-save-btn {
+    width: 100%;
+    background: #0077b5;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 4px;
+    transition: opacity 0.2s;
+  }
+  .modal-save-btn:active { opacity: 0.8; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed;
+    top: calc(var(--safe-top) + 70px);
+    left: 50%; transform: translateX(-50%) translateY(-10px);
+    background: rgba(255,255,255,0.95);
+    color: #0F1B2D;
+    padding: 10px 18px;
+    border-radius: 22px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    opacity: 0;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    z-index: 200;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Desktop: limit card stage width */
+  @media (min-width: 500px) {
+    #card-viewport { padding: 0 24px; }
+    #card-stage    { max-width: 420px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div id="loading">
+  <div class="loader-logo">SP</div>
+  <div class="loader-text">Loading SAP news…</div>
+</div>
+
+<div id="app">
+  <!-- Header -->
+  <div id="header">
+    <div class="brand">
+      <div class="logo-mark">SP</div>
+      <div class="brand-text">
+        <h1>SAP Pulse</h1>
+        <p id="last-updated">SAP ecosystem digest</p>
+      </div>
+    </div>
+    <button id="refresh-btn" onclick="triggerRefresh()">
+      <svg id="refresh-icon" width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+      </svg>
+      Refresh
+    </button>
+  </div>
+
+  <!-- Category pills -->
+  <div id="pill-bar">
+    <div class="pill active" data-cat="All">All</div>
+    <div class="pill" data-cat="Official">🔵 Official</div>
+    <div class="pill" data-cat="Technical">🟣 Technical</div>
+    <div class="pill" data-cat="Industry">🟢 Industry</div>
+    <div class="pill" data-cat="LinkedIn">🔗 LinkedIn</div>
+    <div class="pill" data-cat="Saved">🔖 Saved</div>
+  </div>
+
+  <!-- Progress -->
+  <div id="progress-bar">
+    <div id="progress-track"><div id="progress-fill" style="width:0%"></div></div>
+    <div id="progress-count">0 / 0</div>
+  </div>
+
+  <!-- Card viewport -->
+  <div id="card-viewport">
+    <div id="card-stage">
+      <div id="empty">
+        <div class="e-icon">📰</div>
+        <h3>No stories yet</h3>
+        <p>Tap Refresh to fetch the latest SAP news from the ecosystem.</p>
+      </div>
+      <!-- Cards injected here -->
+    </div>
+  </div>
+
+  <!-- Swipe hint -->
+  <div id="swipe-hint">
+    <div class="hint-arrow">↕</div>
+    <div class="hint-text">Swipe up / down to navigate</div>
+  </div>
+</div>
+
+<!-- FAB: Save LinkedIn post -->
+<button id="fab" onclick="openSaveModal()" title="Save LinkedIn post">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+    <path d="M19 3H5c-1.1 0-2 .9-2 2v14l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+  </svg>
+</button>
+
+<!-- Save post modal -->
+<div id="save-modal-backdrop" onclick="handleBackdropClick(event)">
+  <div id="save-modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#0077b5"><path d="M16 8c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8 8 3.58 8 8zM8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8S12.42 0 8 0zm.5 4H7v4H3v1.5h4V14h1.5V9.5h4V8h-4V4z"/></svg>
+      Save LinkedIn Post
+    </div>
+    <input id="modal-url"   class="modal-input" type="url"  placeholder="Paste LinkedIn post URL…" />
+    <input id="modal-title" class="modal-input" type="text" placeholder="Title or name (optional)" />
+    <textarea id="modal-note" class="modal-input" rows="3" placeholder="Your note or the post text (optional)" style="resize:none"></textarea>
+    <button class="modal-save-btn" onclick="submitSavePost()">Save Post</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────
+let items       = [];
+let filtered    = [];
+let currentIdx  = 0;
+let activeCard  = null;
+let nextCard    = null;
+let dragStart   = 0;
+let dragging    = false;
+let hintShown   = false;
+
+const CAT_COLORS = {
+  Official:  '#0070B1',
+  Technical: '#6C5CE7',
+  Industry:  '#00B894',
+  Analysis:  '#E17055',
+};
+
+// ── Helpers ───────────────────────────────────────────
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 2)   return 'just now';
+  if (m < 60)  return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24)  return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function wordCount(str) { return (str || '').split(/\s+/).filter(Boolean).length; }
+
+function esc(s) {
+  return (s || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── Build card DOM ─────────────────────────────────────
+function buildCard(item) {
+  const div   = document.createElement('div');
+  div.className = 'card entering-from-bottom';
+  div.dataset.id = item.id || '';
+
+  const color = CAT_COLORS[item.category] || '#94A3B8';
+  const wc    = wordCount(item.summary);
+  const isLI  = item.category === 'LinkedIn';
+  const isSav = item.category === 'Saved';
+
+  // LinkedIn card layout
+  if (isLI) {
+    div.innerHTML = `
+      <div class="card-accent" style="background:#0077b5"></div>
+      <div class="linkedin-header">
+        <img class="linkedin-avatar" src="${esc(item.avatar || '')}" alt="${esc(item.source)}" onerror="this.style.display='none'">
+        <div class="linkedin-meta">
+          <div class="linkedin-name">${esc(item.source)}</div>
+          <div class="linkedin-title">${esc(item.subtitle || '')}</div>
+        </div>
+        <span class="li-badge">LinkedIn</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">${esc(item.title)}</div>
+        <div class="card-summary">${esc(item.summary)}</div>
+        <div class="word-count">${wc} words</div>
+      </div>
+      <div class="card-foot">
+        <span class="card-date" style="font-size:12px;color:var(--muted)">${formatDate(item.pubDate)}</span>
+        <a class="read-btn" href="${esc(item.link)}" target="_blank" rel="noopener" style="background:#0077b5">
+          View post →
+        </a>
+      </div>`;
+    return div;
+  }
+
+  // Saved card layout
+  if (isSav) {
+    div.innerHTML = `
+      <div class="card-accent" style="background:#F59E0B"></div>
+      <div class="card-head">
+        <span class="saved-badge">🔖 Saved</span>
+        <span class="card-date">${formatDate(item.pubDate)}</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">${esc(item.title)}</div>
+        <div class="card-summary">${esc(item.summary)}</div>
+      </div>
+      <div class="card-foot">
+        <div class="card-source"><div class="src-dot" style="background:#F59E0B"></div>${esc(item.source)}</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="deletePost('${esc(item.id)}')" style="background:none;border:none;color:#EF4444;font-size:12px;font-weight:600;cursor:pointer;padding:6px">Delete</button>
+          <a class="read-btn" href="${esc(item.link)}" target="_blank" rel="noopener" style="background:#F59E0B">Open →</a>
+        </div>
+      </div>`;
+    return div;
+  }
+
+  // Standard article card
+  const catEmoji = { Official: '🔵', Technical: '🟣', Industry: '🟢', Analysis: '🟠' };
+  const imgHtml = item.image
+    ? `<div class="card-img-wrap">
+         <img class="card-image" src="${esc(item.image)}" alt=""
+              onerror="this.parentElement.outerHTML='<div class=card-img-placeholder style=background:${encodeURIComponent('linear-gradient(135deg,#E8F0F8,#F1F5F9)')}>${catEmoji[item.category]||'📰'}</div>'"
+              loading="lazy">
+       </div>`
+    : `<div class="card-img-placeholder" style="background:linear-gradient(135deg,${color}18,${color}08)">${catEmoji[item.category] || '📰'}</div>`;
+
+  div.innerHTML = `
+    <div class="card-accent" style="background:${color}"></div>
+    ${imgHtml}
+    <div class="card-head">
+      <span class="badge badge-${esc(item.category)}">${esc(item.category)}</span>
+      <span class="card-date">${formatDate(item.pubDate)}</span>
+    </div>
+    <div class="card-body">
+      <div class="card-title">${esc(item.title)}</div>
+      <div class="card-summary">${esc(item.summary)}</div>
+      <div class="word-count">${wc} words</div>
+    </div>
+    <div class="card-foot">
+      <div class="card-source"><div class="src-dot"></div>${esc(item.source)}</div>
+      <a class="read-btn" href="${esc(item.link)}" target="_blank" rel="noopener">
+        Full article →
+      </a>
+    </div>`;
+
+  return div;
+}
+
+// ── Render current card ────────────────────────────────
+function updateProgress() {
+  const pct = filtered.length ? ((currentIdx + 1) / filtered.length * 100) : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-count').textContent =
+    filtered.length ? `${currentIdx + 1} / ${filtered.length}` : '0 / 0';
+}
+
+function showCard(idx, direction = 'down') {
+  const stage = document.getElementById('card-stage');
+
+  // Remove old
+  if (activeCard) {
+    activeCard.classList.remove('active');
+    activeCard.classList.add(direction === 'down' ? 'exiting-to-top' : 'exiting-to-bottom');
+    const old = activeCard;
+    setTimeout(() => old.remove(), 380);
+  }
+
+  if (!filtered.length) {
+    document.getElementById('empty').classList.add('show');
+    activeCard = null;
+    updateProgress();
+    return;
+  }
+
+  document.getElementById('empty').classList.remove('show');
+  const item = filtered[idx];
+  const card = buildCard(item);
+  card.className = 'card ' + (direction === 'down' ? 'entering-from-bottom' : 'entering-from-top');
+  stage.appendChild(card);
+
+  // Force reflow then animate in
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      card.classList.remove('entering-from-bottom', 'entering-from-top');
+      card.classList.add('active');
+    });
+  });
+
+  setupDrag(card);
+  activeCard = card;
+  updateProgress();
+
+  // Show swipe hint once
+  if (!hintShown && filtered.length > 1) {
+    hintShown = true;
+    const hint = document.getElementById('swipe-hint');
+    hint.classList.add('show');
+    setTimeout(() => hint.classList.remove('show'), 3000);
+  }
+}
+
+// ── Navigate ──────────────────────────────────────────
+function goNext() {
+  if (currentIdx < filtered.length - 1) {
+    currentIdx++;
+    showCard(currentIdx, 'down');
+  } else {
+    toast('You\'re all caught up! 🎉');
+    bounce(activeCard, 'up');
+  }
+}
+
+function goPrev() {
+  if (currentIdx > 0) {
+    currentIdx--;
+    showCard(currentIdx, 'up');
+  } else {
+    bounce(activeCard, 'down');
+  }
+}
+
+function bounce(card, dir) {
+  if (!card) return;
+  card.style.transition = 'transform 0.15s ease';
+  card.style.transform  = `translateY(${dir === 'up' ? -18 : 18}px)`;
+  setTimeout(() => {
+    card.style.transform = 'translateY(0)';
+    setTimeout(() => { card.style.transition = ''; }, 200);
+  }, 150);
+}
+
+// ── Drag / Swipe ──────────────────────────────────────
+function setupDrag(card) {
+  let startY = 0, currentY = 0;
+
+  function onStart(e) {
+    // Don't intercept taps on the read button
+    if (e.target.closest('.read-btn')) return;
+    startY = (e.touches ? e.touches[0].clientY : e.clientY);
+    currentY = startY;
+    dragging = true;
+    card.classList.add('dragging');
+  }
+
+  function onMove(e) {
+    if (!dragging) return;
+    e.preventDefault();
+    currentY = (e.touches ? e.touches[0].clientY : e.clientY);
+    const dy = currentY - startY;
+    const resistance = 0.4;
+    card.style.transform = `translateY(${dy * resistance}px)`;
+    card.style.opacity   = String(1 - Math.abs(dy) / 500);
+  }
+
+  function onEnd() {
+    if (!dragging) return;
+    dragging = false;
+    card.classList.remove('dragging');
+    card.style.transform = '';
+    card.style.opacity   = '';
+
+    const dy = currentY - startY;
+    if (dy < -60)      goNext();
+    else if (dy > 60)  goPrev();
+  }
+
+  card.addEventListener('touchstart',  onStart, { passive: true  });
+  card.addEventListener('touchmove',   onMove,  { passive: false });
+  card.addEventListener('touchend',    onEnd,   { passive: true  });
+  card.addEventListener('mousedown',   onStart);
+  card.addEventListener('mousemove',   onMove);
+  card.addEventListener('mouseup',     onEnd);
+  card.addEventListener('mouseleave',  onEnd);
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowRight') goNext();
+  if (e.key === 'ArrowUp'   || e.key === 'ArrowLeft')  goPrev();
+});
+
+// ── Category filter ────────────────────────────────────
+document.getElementById('pill-bar').addEventListener('click', e => {
+  const pill = e.target.closest('.pill');
+  if (!pill) return;
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  const cat = pill.dataset.cat;
+  filtered    = cat === 'All' ? [...items] : items.filter(a => a.category === cat);
+  currentIdx  = 0;
+  if (activeCard) { activeCard.remove(); activeCard = null; }
+  showCard(0, 'down');
+});
+
+// ── Load & Refresh ─────────────────────────────────────
+async function loadNews() {
+  try {
+    const res  = await fetch('/api/news');
+    const data = await res.json();
+    items = data.items || [];
+
+    const activeCat = document.querySelector('.pill.active')?.dataset?.cat || 'All';
+    filtered   = activeCat === 'All' ? [...items] : items.filter(a => a.category === activeCat);
+    currentIdx = 0;
+
+    if (data.lastUpdated) {
+      document.getElementById('last-updated').textContent = 'Updated ' + timeAgo(data.lastUpdated);
+    }
+
+    if (activeCard) { activeCard.remove(); activeCard = null; }
+    showCard(0, 'down');
+  } catch {
+    toast('Could not load news');
+  } finally {
+    document.getElementById('loading').classList.add('hidden');
+  }
+}
+
+async function triggerRefresh() {
+  const btn  = document.getElementById('refresh-btn');
+  const icon = document.getElementById('refresh-icon');
+  btn.disabled = true;
+  icon.style.animation = 'spin 0.7s linear infinite';
+  toast('Fetching latest SAP news…');
+
+  try {
+    const res  = await fetch('/api/refresh', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      toast(`✓ ${data.count} fresh articles loaded`);
+      await loadNews();
+    }
+  } catch {
+    toast('Refresh failed');
+  } finally {
+    btn.disabled = false;
+    icon.style.animation = '';
+  }
+}
+
+const style = document.createElement('style');
+style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+document.head.appendChild(style);
+
+// ── Save modal ────────────────────────────────────────
+function openSaveModal() {
+  document.getElementById('save-modal-backdrop').classList.add('open');
+  setTimeout(() => document.getElementById('modal-url').focus(), 300);
+}
+
+function closeSaveModal() {
+  document.getElementById('save-modal-backdrop').classList.remove('open');
+  ['modal-url','modal-title','modal-note'].forEach(id => document.getElementById(id).value = '');
+}
+
+function handleBackdropClick(e) {
+  if (e.target === document.getElementById('save-modal-backdrop')) closeSaveModal();
+}
+
+async function submitSavePost() {
+  const url   = document.getElementById('modal-url').value.trim();
+  const title = document.getElementById('modal-title').value.trim();
+  const note  = document.getElementById('modal-note').value.trim();
+  if (!url) { toast('Please paste a LinkedIn URL'); return; }
+  try {
+    const res  = await fetch('/api/save-post', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, title: title || 'LinkedIn Post', note }),
+    });
+    const data = await res.json();
+    if (res.status === 409) { toast('Already saved!'); closeSaveModal(); return; }
+    if (!res.ok) throw new Error(data.error);
+    toast('Post saved');
+    closeSaveModal();
+    await loadNews();
+  } catch (err) {
+    toast('Save failed: ' + err.message);
+  }
+}
+
+async function deletePost(id) {
+  await fetch('/api/save-post/' + id, { method: 'DELETE' });
+  toast('Post removed');
+  await loadNews();
+}
+
+// ── Init ──────────────────────────────────────────────
+loadNews();
+</script>
+</body>
+</html>

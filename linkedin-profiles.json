@@ -1,0 +1,7 @@
+[
+  { "username": "christianklein",     "name": "Christian Klein",     "title": "CEO, SAP"              },
+  { "username": "dominiksaueressig",  "name": "Thomas Saueressig",  "title": "Board Member, SAP"     },
+  { "username": "julia-white-sap",    "name": "Julia White",         "title": "CMO, SAP"              },
+  { "username": "scott-russell-sap",  "name": "Scott Russell",       "title": "President, SAP"        },
+  { "username": "dominik-asam",       "name": "Dominik Asam",        "title": "CFO, SAP"              }
+]
