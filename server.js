@@ -183,14 +183,18 @@ async function fetchAndCache() {
     await new Promise(r => setTimeout(r, 250));
   }
 
-  console.log('[SAP Pulse] Fetching article images...');
-  await enrichWithImages(items);
-  const withImages = items.filter(i => i.image).length;
-  console.log(`[SAP Pulse] Images found: ${withImages}/${items.length}`);
-
+  // Save articles immediately so the refresh button responds fast
   const data = { lastUpdated: new Date().toISOString(), items };
   fs.writeFileSync(CACHE, JSON.stringify(data, null, 2));
-  console.log(`[SAP Pulse] Done – cached ${items.length} articles.\n`);
+  console.log(`[SAP Pulse] Cached ${items.length} articles. Fetching images in background...`);
+
+  // Enrich with og:images in background — doesn't block the response
+  enrichWithImages(items).then(() => {
+    const withImages = items.filter(i => i.image).length;
+    fs.writeFileSync(CACHE, JSON.stringify({ lastUpdated: data.lastUpdated, items }, null, 2));
+    console.log(`[SAP Pulse] Images done: ${withImages}/${items.length}`);
+  }).catch(() => {});
+
   return data;
 }
 
